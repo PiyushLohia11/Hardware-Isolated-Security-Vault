@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Isolated Security Vault</title>
+    <!-- Google Fonts for Retro Pixel & Modern Cyber Aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-canvas: #040404;
+            --bg-card: rgba(41, 35, 23, 0.95);
+            --border-card: #454533;
+            --border-card-hover: rgba(247, 194, 85, 0.4);
+            --bg-input: rgba(4, 4, 4, 0.65);
+            --accent-amber: #F7C255;
+            --accent-amber-subtle: rgba(247, 194, 85, 0.2);
+            --accent-amber-border: rgba(247, 194, 85, 0.35);
+            --btn-green: #395938;
+            --btn-green-hover: #456d44;
+            --btn-green-active: #2b452a;
+            --status-green: #55F755;
+            --status-red: #f85149;
+            --status-amber: #F7C255;
+            --text-white: #ffffff;
+            --text-cream: #faf5ea;
+            --text-muted: #9E958D;
+            --font-pixel: 'Silkscreen', monospace;
+            --font-sans: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            background-image: url('grid-pattern.png');
+            background-repeat: repeat;
+            background-position: center top;
+            background-size: 1535px auto;
+            color: var(--text-white);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Subtle dark overlay matching Figma SVG pattern opacity */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(4, 4, 4, 0.55);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1440px;
+            min-height: 100vh;
+            height: 100vh;
+            padding: 26px 56px 28px 56px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* ================= NAVIGATION / HEADER ================= */
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand-title {
+            font-family: var(--font-pixel);
+            font-size: clamp(20px, 2.7vw, 36px);
+            letter-spacing: 1px;
+            color: var(--text-white);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            text-shadow: 0 0 16px rgba(247, 194, 85, 0.15);
+        }
+
+        .brand-title:hover {
+            color: var(--accent-amber);
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            animation: blink 0.75s step-end infinite;
+            color: var(--accent-amber);
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-tab {
+            font-family: var(--font-pixel);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            padding: 10px 18px;
+            border-radius: 20px;
+            background: rgba(41, 35, 23, 0.7);
+            border: 1px solid var(--border-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-white);
+            border-color: var(--accent-amber);
+        }
+
+        .nav-tab.active {
+            background: var(--accent-amber-subtle);
+            border-color: var(--accent-amber);
+            color: var(--accent-amber);
+        }
+
+        /* ================= GATEWAY PILL BUTTON ================= */
+        .gateway-btn {
+            width: 100%;
+            max-width: 500px;
+            height: 80px;
+            border-radius: 40px;
+            background: var(--accent-amber-subtle);
+            border: 1px solid var(--accent-amber-border);
+            color: var(--text-white);
+            font-family: var(--font-sans);
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(247, 194, 85, 0.25);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .gateway-btn:hover {
+            background: rgba(247, 194, 85, 0.3);
+            border-color: var(--accent-amber);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(247, 194, 85, 0.15);
+        }
+
+        .gateway-btn.connected {
+            background: rgba(41, 65, 41, 0.5);
+            border-color: rgba(85, 247, 85, 0.4);
+            color: #e5ffe5;
+        }
+
+        .gateway-btn.connected:hover {
+            background: rgba(41, 65, 41, 0.7);
+            border-color: var(--status-green);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #777;
+            display: inline-block;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .status-dot.active {
+            background-color: var(--status-green);
+            box-shadow: 0 0 12px var(--status-green);
+            animation: pulse-green 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(85, 247, 85, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(85, 247, 85, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(85, 247, 85, 0); }
+        }
+
+        /* ================= VIEW CONTAINER & TRANSITIONS ================= */
+        .view-section {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.35s ease;
+        }
+
+        .view-section.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ================= VIEW 1: HOME PAGE ================= */
+        .home-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: clamp(32px, 4vw, 56px);
+            align-items: center;
+            margin: auto 0;
+            max-width: 1320px;
+            width: 100%;
+            padding: 8px 10px;
+        }
+
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .board-glow {
+            position: absolute;
+            width: 440px;
+            height: 340px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(247, 194, 85, 0.16) 0%, rgba(4, 4, 4, 0) 70%);
+            filter: blur(40px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .esp32-image {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: clamp(360px, 30vw, 490px);
+            height: auto;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.8));
+            animation: subtle-float 6s ease-in-out infinite;
+        }
+
+        @keyframes subtle-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(-0.5deg); }
+        }
+
+        /* Microcontroller Telemetry Badges below the Board */
+        .board-telemetry-tags {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 16px;
+            max-width: 520px;
+        }
+
+        .telemetry-tag {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            background: rgba(4, 4, 4, 0.65);
+            border: 1px solid rgba(69, 69, 51, 0.8);
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .telemetry-tag:hover {
+            color: var(--accent-amber);
+            border-color: var(--accent-amber-border);
+            background: rgba(41, 35, 23, 0.65);
+            transform: translateY(-1px);
+        }
+
+        .telemetry-tag .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-amber);
+            display: inline-block;
+        }
+
+        .home-content {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(18px, 2.8vh, 28px);
+        }
+
+        .home-section-title {
+            font-family: var(--font-pixel);
+            font-size: 18px;
+            color: var(--text-white);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .home-desc-text {
+            color: var(--accent-amber);
+            font-size: 16px;
+            line-height: 1.62;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+            text-align: justify;
+        }
+
+        .built-by-text {
+            color: var(--accent-amber);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        /* Hardware Security Architecture Cards (Bottom Section) */
+        .home-features-section {
+            margin-top: clamp(24px, 3.5vh, 40px);
+            width: 100%;
+            max-width: 1320px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .features-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(69, 69, 51, 0.5);
+            padding-bottom: 8px;
+        }
+
+        .features-header-title {
+            font-family: var(--font-pixel);
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .features-header-status {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent-amber);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .home-features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 100%;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 18px;
+            padding: 22px 22px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent-amber);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(247, 194, 85, 0.1);
+        }
+
+        .feature-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .feature-tag {
+            font-family: var(--font-pixel);
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            color: var(--accent-amber);
+            background: rgba(247, 194, 85, 0.12);
+            border: 1px solid rgba(247, 194, 85, 0.3);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .feature-icon {
+            font-size: 15px;
+            opacity: 0.8;
+        }
+
+        .feature-title {
+            font-family: var(--font-pixel);
+            font-size: 13px;
+            color: var(--text-white);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .feature-desc {
+            color: #c9bfb0;
+            font-size: 14px;
+            line-height: 1.55;
+            font-weight: 400;
+        }
+
+        /* ================= VIEW 2: MAIN PAGE (Matches Main.svg) ================= */
+        .main-top-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0 32px 0;
+            width: 100%;
+        }
+
+        .main-dashboard-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 683px) minmax(0, 446px);
+            justify-content: center;
+            gap: 50px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .left-cards-column {
+            display: flex;
+            flex-direction: column;
+            gap: 36px;
+        }
+
+        .vault-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            padding: 30px 36px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 265px;
+            gap: 18px;
+            transition: border-color 0.25s ease, opacity 0.3s ease;
+            position: relative;
+        }
+
+        .vault-card.locked-ui {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .vault-card:hover {
+            border-color: var(--border-card-hover);
+        }
+
+        .card-title {
+            font-family: var(--font-pixel);
+            font-size: 15px;
+            color: var(--text-white);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+
+        .vault-input {
+            width: 100%;
+            height: 48px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            color: var(--text-white);
+            font-family: var(--font-sans);
+            font-size: 16px;
+            padding: 0 50px 0 24px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .vault-input:focus {
+            border-color: var(--accent-amber);
+            background: rgba(8, 8, 8, 0.85);
+            box-shadow: 0 0 15px rgba(247, 194, 85, 0.15);
+        }
+
+        .vault-input::placeholder {
+            color: rgba(255, 255, 255, 0.45);
+            font-family: var(--font-sans);
+            font-size: 15px;
+        }
+
+        .input-eye-btn {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: var(--font-pixel);
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+            user-select: none;
+        }
+
+        .input-eye-btn:hover {
+            color: var(--accent-amber);
+        }
+
+        .action-btn-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-top: 2px;
+        }
+
+        .action-btn {
+            width: 100%;
+            max-width: 500px;
+            height: 52px;
+            border-radius: 26px;
+            background: var(--btn-green);
+            border: none;
+            color: var(--text-white);
+            font-family: var(--font-sans);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: var(--btn-green-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(57, 89, 56, 0.4);
+        }
+
+        .action-btn:active:not(:disabled) {
+            background: var(--btn-green-active);
+            transform: translateY(1px);
+        }
+
+        .action-btn:disabled {
+            background: #252822;
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Status Placeholder: styled exactly matching SVG bottom label */
+        .status-placeholder-label {
+            font-family: var(--font-pixel);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            min-height: 18px;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        .status-placeholder-label.standby {
+            color: var(--text-muted);
+        }
+
+        .status-placeholder-label.pending {
+            color: var(--status-amber);
+            animation: pulse-amber 1.5s infinite;
+        }
+
+        .status-placeholder-label.success {
+            color: var(--status-green);
+            text-shadow: 0 0 10px rgba(85, 247, 85, 0.5);
+        }
+
+        .status-placeholder-label.error {
+            color: var(--status-red);
+            text-shadow: 0 0 10px rgba(248, 81, 73, 0.5);
+        }
+
+        @keyframes pulse-amber {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ================= TERMINAL / LOG COLUMN ================= */
+        .terminal-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .terminal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            padding: 26px 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 566px;
+            max-height: 566px;
+            position: relative;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(69, 69, 51, 0.6);
+            margin-bottom: 14px;
+        }
+
+        .terminal-header-title {
+            font-family: var(--font-pixel);
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .term-btn {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            background: rgba(4, 4, 4, 0.4);
+            border: 1px solid var(--border-card);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .term-btn:hover {
+            color: var(--text-white);
+            border-color: var(--accent-amber);
+        }
+
+        .terminal-screen {
+            flex: 1;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-cream);
+            padding-right: 6px;
+            scroll-behavior: smooth;
+        }
+
+        .terminal-screen::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .terminal-screen::-webkit-scrollbar-track {
+            background: rgba(4, 4, 4, 0.3);
+            border-radius: 3px;
+        }
+
+        .terminal-screen::-webkit-scrollbar-thumb {
+            background: var(--border-card);
+            border-radius: 3px;
+        }
+
+        .terminal-screen::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-amber);
+        }
+
+        .log-line {
+            margin-bottom: 8px;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .log-line.sys { color: #88c0d0; }
+        .log-line.uart { color: var(--accent-amber); }
+        .log-line.success { color: var(--status-green); }
+        .log-line.error { color: var(--status-red); }
+        .log-line.wait { color: #d2a8ff; }
+
+        /* Responsive breakpoints */
+        @media (max-height: 740px), (max-width: 1080px) {
+            html, body {
+                height: auto;
+                min-height: 100vh;
+            }
+            .app-wrapper {
+                height: auto;
+                min-height: 100vh;
+            }
+            .view-section.active {
+                height: auto;
+            }
+        }
+
+        @media (max-width: 1240px) {
+            .home-features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1080px) {
+            .app-wrapper {
+                padding: 30px 24px;
+            }
+            .home-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .main-dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .terminal-card {
+                min-height: 380px;
+                max-height: 480px;
+            }
+            .gateway-btn {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .home-features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .app-wrapper {
+                padding: 20px 16px;
+            }
+            .vault-card {
+                padding: 22px 18px;
+            }
+            .gateway-btn {
+                height: 70px;
+                font-size: 17px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-wrapper">
+        <!-- TOP HEADER: Matches HARDWARE ISOLATED SECURITY VAULT/< with Typewriter & Blinking Cursor -->
+        <header>
+            <div class="brand-title" id="brandTitle" title="Return to Overview">
+                <span id="typingHeading">HARDWARE ISOLATED SECURITY VAULT/&lt;</span><span class="cursor-blink">_</span>
+            </div>
+            <div class="nav-controls">
+                <button class="nav-tab active" id="tabHome" onclick="switchView('home')">Overview</button>
+                <button class="nav-tab" id="tabMain" onclick="switchView('main')">Vault Console</button>
+            </div>
+        </header>
+
+        <!-- ================= VIEW 1: HOME PAGE ================= -->
+        <section id="homeView" class="view-section active">
+            <!-- Top Hero Row: ESP32 Board + About Section -->
+            <div class="home-grid">
+                <!-- Left Column: Isometric Pixel Art ESP32 Board & Hardware Telemetry Badges -->
+                <div class="board-container">
+                    <div class="board-glow"></div>
+                    <img src="esp32-board.png" alt="ESP32 Microcontroller Board" class="esp32-image" id="esp32BoardImg">
+                    <!-- Microcontroller Hardware Telemetry Badges -->
+                    <div class="board-telemetry-tags">
+                        <span class="telemetry-tag"><span class="dot"></span>XTENSA 32-BIT LX6</span>
+                        <span class="telemetry-tag"><span class="dot"></span>GPIO0 INTERRUPT AIRGAP</span>
+                        <span class="telemetry-tag"><span class="dot"></span>100% ON-CHIP CRYPTO</span>
+                        <span class="telemetry-tag"><span class="dot"></span>HW ACCEPT / REJECT</span>
+                        <span class="telemetry-tag"><span class="dot"></span>SECURE NVS FLASH</span>
+                        <span class="telemetry-tag"><span class="dot"></span>UART 115200 8N1</span>
+                    </div>
+                </div>
+
+                <!-- Right Column: Connect Button, About & Built By sections -->
+                <div class="home-content">
+                    <div>
+                        <button id="homeGatewayBtn" class="gateway-btn" onclick="handleGatewayClick()">
+                            <span class="status-dot gateway-dot"></span>
+                            <span class="gateway-text">Connect to ESP32 Gateway</span>
+                        </button>
+                    </div>
+
+                    <div class="home-section">
+                        <h2 class="home-section-title">ABOUT :</h2>
+                        <p class="home-desc-text">
+                            A secure hardware token built using the ESP32 that requires physical button confirmation before processing sensitive data. Integrating embedded firmware, on-chip Non-Volatile Storage (NVS) for persistent credential encryption, finite state machines, and a Web Serial interface, all encryption and verification decisions remain isolated within microcontroller silicon.
+                        </p>
+                    </div>
+
+                    <div class="home-section">
+                        <h2 class="home-section-title">BUILT BY:</h2>
+                        <p class="built-by-text">
+                            Piyush Lohia (25BCE2527) | Yash Agarwal (25BCE2531)
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Section: 4 Hardware Security Architecture Cards -->
+            <div class="home-features-section">
+                <div class="features-header-bar">
+                    <div class="features-header-title">
+                        <span>●</span> SECURITY ARCHITECTURE &amp; HARDWARE AIRGAP
+                    </div>
+                    <div class="features-header-status">
+                        <span>100% HW CRYPTO</span> / <span>HW ACCEPT &amp; REJECT</span> / <span>NVS FLASH</span> / <span>TACTILE AIRGAP</span>
+                    </div>
+                </div>
+
+                <div class="home-features-grid">
+                    <!-- CARD 1: TACTILE AIRGAP -->
+                    <div class="feature-card">
+                        <div class="feature-top">
+                            <span class="feature-tag">[01] TACTILE AIRGAP</span>
+                        </div>
+                        <h3 class="feature-title">PHYSICAL BUTTON 2FA</h3>
+                        <p class="feature-desc">
+                            Eliminates automated remote malware execution. Cryptographic commits remain locked in hardware memory until the operator physically depresses the on-board tactile button (GPIO0 interrupt).
+                        </p>
+                    </div>
+
+                    <!-- CARD 2: HARDWARE ENCRYPTION -->
+                    <div class="feature-card">
+                        <div class="feature-top">
+                            <span class="feature-tag">[02] ON-CHIP CRYPTO</span>
+                        </div>
+                        <h3 class="feature-title">100% HARDWARE ENCRYPTION</h3>
+                        <p class="feature-desc">
+                            All encryption and hashing are performed directly on the microcontroller hardware. The browser/host never executes cipher algorithms or holds encryption keys, preventing host memory dumps.
+                        </p>
+                    </div>
+
+                    <!-- CARD 3: HARDWARE ACCEPT / REJECT -->
+                    <div class="feature-card">
+                        <div class="feature-top">
+                            <span class="feature-tag">[03] AUTONOMOUS GATE</span>
+                        </div>
+                        <h3 class="feature-title">HARDWARE ACCEPT / REJECT</h3>
+                        <p class="feature-desc">
+                            Verification is decided strictly on hardware. The ESP32 independently validates candidate credentials and issues the authoritative ACCEPT or REJECT verdict—client software cannot tamper with decisions.
+                        </p>
+                    </div>
+
+                    <!-- CARD 4: NVS STORAGE PERSISTENCE -->
+                    <div class="feature-card">
+                        <div class="feature-top">
+                            <span class="feature-tag">[04] SECURE MEMORY</span>
+                        </div>
+                        <h3 class="feature-title">NVS FLASH STORAGE</h3>
+                        <p class="feature-desc">
+                            Encrypted credentials are saved directly to ESP32 Non-Volatile Storage (NVS) flash partitions. Zero disk footprints, cookies, or browser cache—data remains securely isolated on-chip across reboots.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 2: MAIN PAGE (Matching Main.svg) ================= -->
+        <section id="mainView" class="view-section">
+            <!-- Centered Gateway Button (Matches Main.svg x=470 y=229) -->
+            <div class="main-top-bar">
+                <button id="mainGatewayBtn" class="gateway-btn" onclick="handleGatewayClick()">
+                    <span class="status-dot gateway-dot"></span>
+                    <span class="gateway-text">Connect to ESP32 Gateway</span>
+                </button>
+            </div>
+
+            <div class="main-dashboard-grid">
+                <!-- Left Column: Two Action Cards -->
+                <div class="left-cards-column">
+                    <!-- CARD 1: CREATE A PASSWORD TO ENCRYPT -->
+                    <div class="vault-card" id="createCard">
+                        <div class="card-title">CREATE A PASSWORD TO ENCRYPT</div>
+                        <div class="input-group">
+                            <input type="password" id="createInput" class="vault-input" placeholder="Enter password" autocomplete="new-password">
+                            <button type="button" class="input-eye-btn" onclick="togglePasswordVis('createInput', this)" title="Show/Hide Password">SHOW</button>
+                        </div>
+                        <div class="action-btn-container">
+                            <button id="createBtn" class="action-btn" onclick="handleCreatePassword()">
+                                <span>Lock Password to Vault</span>
+                            </button>
+                        </div>
+                        <!-- Status Placeholder: Matches SVG layout -->
+                        <div id="createStatus" class="status-placeholder-label standby">
+                            STANDBY — READY TO LOCK
+                        </div>
+                    </div>
+
+                    <!-- CARD 2: VERIFY PASSWORD -->
+                    <div class="vault-card locked-ui" id="verifyCard">
+                        <div class="card-title">VERIFY PASSWORD</div>
+                        <div class="input-group">
+                            <input type="password" id="verifyInput" class="vault-input" placeholder="Enter password" autocomplete="current-password" disabled>
+                            <button type="button" class="input-eye-btn" onclick="togglePasswordVis('verifyInput', this)" title="Show/Hide Password">SHOW</button>
+                        </div>
+                        <div class="action-btn-container">
+                            <button id="verifyBtn" class="action-btn" onclick="handleVerifyPassword()" disabled>
+                                <span>Verify Via Hardware</span>
+                            </button>
+                        </div>
+                        <!-- Status Placeholder: Matches SVG layout -->
+                        <div id="verifyStatus" class="status-placeholder-label standby">
+                            STANDBY — AWAITING VERIFICATION
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Terminal Console matching height of both cards -->
+                <div class="terminal-column">
+                    <div class="terminal-card">
+                        <div class="terminal-header">
+                            <div class="terminal-header-title">
+                                <span>●</span> HARDWARE SERIAL MONITOR
+                            </div>
+                            <div class="terminal-actions">
+                                <button class="term-btn" onclick="copyTerminalLogs()">Copy</button>
+                                <button class="term-btn" onclick="clearTerminalLogs()">Clear</button>
+                            </div>
+                        </div>
+                        <!-- Terminal Log Stream matching exact Main.svg initial line -->
+                        <div class="terminal-screen" id="logArea">
+                            <div class="log-line sys">&gt; System initialized. Waiting for USB Connection</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // State variables
+        let port = null;
+        let writer = null;
+        let reader = null;
+        let isConnected = false;
+        let storedHash = null;
+        let currentOperation = null;
+
+        // Elements
+        const gatewayButtons = document.querySelectorAll('.gateway-btn');
+        const gatewayTexts = document.querySelectorAll('.gateway-text');
+        const gatewayDots = document.querySelectorAll('.gateway-dot');
+
+        const homeView = document.getElementById('homeView');
+        const mainView = document.getElementById('mainView');
+        const tabHome = document.getElementById('tabHome');
+        const tabMain = document.getElementById('tabMain');
+        const brandTitle = document.getElementById('brandTitle');
+        const typingHeading = document.getElementById('typingHeading');
+
+        const createCard = document.getElementById('createCard');
+        const createInput = document.getElementById('createInput');
+        const createBtn = document.getElementById('createBtn');
+        const createStatus = document.getElementById('createStatus');
+
+        const verifyCard = document.getElementById('verifyCard');
+        const verifyInput = document.getElementById('verifyInput');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const verifyStatus = document.getElementById('verifyStatus');
+
+        const logArea = document.getElementById('logArea');
+
+        // Typewriter Animation for Heading
+        const fullTitle = "HARDWARE ISOLATED SECURITY VAULT/<";
+        let typingTimeout = null;
+
+        function animateHeadingText(targetText, speed = 40) {
+            clearTimeout(typingTimeout);
+            typingHeading.textContent = "";
+            let idx = 0;
+            function typeChar() {
+                if (idx < targetText.length) {
+                    typingHeading.textContent += targetText.charAt(idx);
+                    idx++;
+                    typingTimeout = setTimeout(typeChar, speed + (Math.random() * 20 - 10));
+                }
+            }
+            typeChar();
+        }
+
+        // Run animation on load
+        window.addEventListener('DOMContentLoaded', () => {
+            animateHeadingText(fullTitle, 35);
+        });
+
+        // Brand click switches view and replays typing
+        brandTitle.addEventListener('click', () => {
+            switchView('home');
+            animateHeadingText(fullTitle, 25);
+        });
+
+        // View Switcher
+        function switchView(viewName) {
+            if (viewName === 'home') {
+                homeView.classList.add('active');
+                mainView.classList.remove('active');
+                tabHome.classList.add('active');
+                tabMain.classList.remove('active');
+            } else {
+                homeView.classList.remove('active');
+                mainView.classList.add('active');
+                tabHome.classList.remove('active');
+                tabMain.classList.add('active');
+            }
+        }
+
+        // Toggle Password Visibility
+        function togglePasswordVis(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'HIDE';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'SHOW';
+            }
+        }
+
+        // Terminal Logging
+        function getTimestamp() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0];
+        }
+
+        function log(message, type = 'sys') {
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            line.textContent = `> [${getTimestamp()}] ${message}`;
+
+            logArea.appendChild(line);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function clearTerminalLogs() {
+            logArea.innerHTML = '';
+            const line = document.createElement('div');
+            line.className = 'log-line sys';
+            line.textContent = `> [${getTimestamp()}] Terminal cleared. Waiting for next hardware event.`;
+            logArea.appendChild(line);
+        }
+
+        function copyTerminalLogs() {
+            const text = logArea.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                log("Logs copied to clipboard.", 'sys');
+            });
+        }
+
+        // Gateway Connection Handler via Web Serial
+        async function handleGatewayClick() {
+            if (isConnected) {
+                // If already connected, switch to Main view
+                switchView('main');
+                return;
+            }
+
+            if (!("serial" in navigator)) {
+                log("Web Serial API not supported in this browser. Please use Chrome, Edge, or Opera with USB connected.", 'error');
+                alert("Web Serial API is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Opera to connect to the ESP32 hardware via USB.");
+                return;
+            }
+
+            try {
+                log("Requesting USB Serial Port (Baud: 115200)...", 'uart');
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                isConnected = true;
+                updateConnectedUI();
+                log("USB Connection Established with ESP32 Gateway.", 'success');
+                log("Vault ready for cryptographic operations.", 'sys');
+
+                // Read incoming serial stream
+                readSerialLoop();
+
+                // Switch to Main View automatically
+                switchView('main');
+            } catch (err) {
+                log("Connection cancelled or failed: " + err.message, 'error');
+            }
+        }
+
+        function updateConnectedUI() {
+            gatewayButtons.forEach(btn => btn.classList.add('connected'));
+            gatewayDots.forEach(dot => dot.classList.add('active'));
+            gatewayTexts.forEach(txt => txt.textContent = "ESP32 Gateway Connected");
+            createCard.classList.remove('locked-ui');
+        }
+
+        // Send to Hardware
+        async function sendToHardware(payload, operationType) {
+            currentOperation = operationType;
+
+            if (port && port.writable) {
+                try {
+                    const encoder = new TextEncoder();
+                    writer = port.writable.getWriter();
+                    await writer.write(encoder.encode(`${operationType}:${payload}\n`));
+                    writer.releaseLock();
+                    log(`Sent to Vault. Waiting for physical button press on ESP32...`, 'wait');
+                } catch (e) {
+                    log("Serial transmission failed: " + e.message, 'error');
+                }
+            } else {
+                log("Hardware port not writable. Please click Connect to ESP32 Gateway.", 'error');
+            }
+        }
+
+        // Operation 1: Create Password
+        function handleCreatePassword() {
+            const password = createInput.value.trim();
+            if (!password) {
+                createStatus.textContent = "PLEASE ENTER A PASSWORD";
+                createStatus.className = "status-placeholder-label error";
+                return;
+            }
+
+            createStatus.textContent = "WAITING FOR HARDWARE CONFIRMATION...";
+            createStatus.className = "status-placeholder-label pending";
+            createBtn.disabled = true;
+
+            sendToHardware(password, 'CREATE');
+        }
+
+        // Operation 2: Verify Password
+        function handleVerifyPassword() {
+            const password = verifyInput.value.trim();
+            if (!password) {
+                verifyStatus.textContent = "PLEASE ENTER A PASSWORD TO VERIFY";
+                verifyStatus.className = "status-placeholder-label error";
+                return;
+            }
+
+            verifyStatus.textContent = "WAITING FOR HARDWARE CONFIRMATION...";
+            verifyStatus.className = "status-placeholder-label pending";
+            verifyBtn.disabled = true;
+
+            sendToHardware(password, 'VERIFY');
+        }
+
+        // Common Hardware Success Handler
+function handleHardwareSuccess(cipherResult) {
+    createBtn.disabled = false;
+    verifyBtn.disabled = false;
+
+    if (currentOperation === 'CREATE') {
+        // Matches exact text from Main.svg
+        createStatus.textContent = "PASSWORD ENCRYPTED AND STORED";
+        createStatus.className = "status-placeholder-label success";
+
+        log(`Registered Hash: ${cipherResult}`, 'success');
+        log("Password encrypted and locked in secure hardware NVS.", 'uart');
+
+        // Enable Verify Card
+        verifyCard.classList.remove('locked-ui');
+        verifyInput.disabled = false;
+        verifyBtn.disabled = false;
+        verifyStatus.textContent = "READY FOR AUTHENTICATION";
+        verifyStatus.className = "status-placeholder-label standby";
+    }
+    else if (currentOperation === 'VERIFY') {
+        // We DO NOT compare hashes here! 
+        // If the ESP32 sent "SUCCESS", it means the hardware already verified it perfectly.
+        verifyStatus.textContent = "HASH VERIFIED BY HARDWARE";
+        verifyStatus.className = "status-placeholder-label success";
+        log(`Hardware Verification Match: ${cipherResult}`, 'success');
+        log("Authentication Success. Physical access granted.", 'success');
+    }
+}
+
+        function handleHardwareError(errorMsg) {
+            createBtn.disabled = false;
+            verifyBtn.disabled = false;
+
+            const displayMsg = "HARDWARE REJECTED OPERATION";
+            if (currentOperation === 'CREATE') {
+                createStatus.textContent = displayMsg;
+                createStatus.className = "status-placeholder-label error";
+            } else {
+                verifyStatus.textContent = displayMsg;
+                verifyStatus.className = "status-placeholder-label error";
+            }
+            log(`Vault Alert: ${errorMsg}`, 'error');
+        }
+
+        // Read Loop for Real Hardware
+        async function readSerialLoop() {
+            const decoder = new TextDecoderStream();
+            port.readable.pipeTo(decoder.writable);
+            reader = decoder.readable.getReader();
+            let buffer = "";
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (value) {
+                        buffer += value;
+                        if (buffer.includes('\n')) {
+                            let messages = buffer.split('\n');
+                            buffer = messages.pop();
+
+                            messages.forEach(msg => {
+                                msg = msg.trim();
+                                if (!msg) return;
+
+                               if (msg.startsWith("SUCCESS:")) {
+    				const cipherResult = msg.substring(8).trim();
+    				handleHardwareSuccess(cipherResult);
+				} else if (msg.startsWith("ERROR:")) {
+    					// Only flag actual errors that start with "ERROR:"
+   					 handleHardwareError(msg);
+					} else {
+    					// Treat everything else as a normal system log
+    					log(`${msg}`, 'uart');
+				}
+                            });
+                        }
+                    }
+                    if (done) break;
+                }
+            } catch (err) {
+                log("Serial connection stream ended: " + err.message, 'error');
+                isConnected = false;
+                gatewayButtons.forEach(btn => btn.classList.remove('connected'));
+                gatewayDots.forEach(dot => dot.classList.remove('active'));
+                gatewayTexts.forEach(txt => txt.textContent = "Connect to ESP32 Gateway");
+            }
+        }
+
+        // Keyboard Shortcut: Enter on inputs triggers submit
+        createInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleCreatePassword();
+        });
+        verifyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleVerifyPassword();
+        });
+    </script>
+</body>
+
+</html>
