@@ -121,23 +121,6 @@ Open `http://localhost:8000/vault_1.html` (or `index.html`).
 
 ---
 
-## 📂 Repository Structure
-
-```text
-├── Circuit.jpg            # Prototype breadboard circuit photo
-├── esp32-board.png        # ESP32 pinout illustration
-├── grid-pattern.png       # Web UI styling asset
-├── Home Page.svg          # UI Design mockup (Home)
-├── Main.svg               # UI Design mockup (Main)
-├── index.html             # Web Serial cyberpunk dashboard
-├── vault_1.html           # Web Serial cyberpunk dashboard (formatted)
-├── sketch_oct18a/
-│   └── sketch_oct18a.ino  # ESP32 C++ firmware (FSM, mbedTLS, NVS, ISR)
-└── README.md              # Project documentation
-```
-
----
-
 ## 👥 Built By
 
 Developed as an embedded security hardware project by:
