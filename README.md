@@ -31,11 +31,7 @@ The **Hardware-Isolated Security Vault** establishes a physical silicon boundary
 
 ---
 
-## 📸 Hardware Setup & Pinout
-
-<p align="center">
-  <img src="esp32-board.png" alt="ESP32 Board Pinout Reference" width="480" />
-</p>
+## 🔌 Hardware Setup & Pinout
 
 ### Wiring Connections
 
