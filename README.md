@@ -40,27 +40,28 @@ The architecture decouples the untrusted host workstation from the trusted hardw
 ```mermaid
 flowchart TD
     subgraph Host ["💻 Host Workstation (Untrusted Zone)"]
-        UI["Cyberpunk Web Dashboard\n(vault_1.html / index.html)"]
-        WSerial["Browser Web Serial Driver\n(115200 Baud 8N1)"]
-        UI <-->|JSON/UART Strings| WSerial
+        UI["Cyberpunk Web Dashboard<br/>(vault_1.html / index.html)"]
+        WSerial["Browser Web Serial Driver<br/>(115200 Baud 8N1)"]
+        UI <-->|JSON / UART Strings| WSerial
     end
 
     subgraph Hardware ["🔒 ESP32 Security Vault (Trusted Silicon Zone)"]
-        UART["Hardware UART Controller\n(Serial0 @ 115200)"]
-        FSM["Moore Finite State Machine\n(IDLE / ARMED Engine)"]
-        ISR["Hardware Interrupt Handler\n(GPIO 25 Tactile Button)"]
-        CRYPTO["mbedTLS Hardware Engine\n(SHA-256 Cipher Unit)"]
-        NVS["Flash Memory (Preferences)\n['vault_data' Partition]"]
-        PERIPH["Feedback Peripherals\n(GPIO 26 LED & GPIO 27 Buzzer)"]
+        UART["Hardware UART Controller<br/>(Serial0 @ 115200)"]
+        FSM["Moore Finite State Machine<br/>(IDLE / ARMED Engine)"]
+        ISR["Hardware Interrupt Handler<br/>(GPIO 25 Tactile Button)"]
+        CRYPTO["mbedTLS Hardware Engine<br/>(SHA-256 Cipher Unit)"]
+        NVS["Flash Memory Preferences<br/>(vault_data Partition)"]
+        PERIPH["Feedback Peripherals<br/>(GPIO 26 LED & GPIO 27 Buzzer)"]
         
-        WSerial <==== USB Serial Connection ====> UART
         UART -->|CREATE / VERIFY| FSM
-        ISR -->|Single/Double Click Event| FSM
+        ISR -->|Single / Double Click Event| FSM
         FSM -->|Compute Digest| CRYPTO
         CRYPTO -->|Query / Save Master Hash| NVS
         FSM -->|Status Telemetry & Tones| PERIPH
-        FSM -->|SUCCESS:hash / ERROR:msg| UART
+        FSM -->|SUCCESS / ERROR| UART
     end
+
+    WSerial <-->|USB Serial Connection| UART
 ```
 
 ---
@@ -70,44 +71,26 @@ flowchart TD
 The embedded firmware runs a deterministic Moore state machine governing access control and hardware authorization:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> IDLE : Power On / Flash Loaded
+flowchart TD
+    START([● System Power On / Flash Loaded]) --> IDLE[IDLE STATE<br/>Standby: LED OFF / Buzzer OFF]
 
-    state IDLE {
-        description: System Standby (LED OFF, Buzzer OFF)
-    }
+    IDLE -->|Rx CREATE:payload or VERIFY:payload| ARMED[ARMED STATE<br/>LED ON | 100ms Chirp | 5s Timer Active]
 
-    state ARMED {
-        description: LED ON, 100ms Chirp, 5000ms Countdown Timer Active
-    }
+    ARMED -->|1 Click detected<br/>after 1000ms window| COMMIT[COMMIT & EVALUATE<br/>Hardware mbedTLS SHA-256 Engine]
+    ARMED -->|2 Clicks detected<br/>Emergency Abort| REJECT[REJECT / ABORT<br/>Tx ERROR:Rejected | 1s Warning Buzzer]
+    ARMED -->|Timeout > 5000ms<br/>No physical presence| TIMEOUT[TIMEOUT ALARM<br/>Tx ERROR:Timeout | Log NVS | 2s Siren]
 
-    IDLE --> ARMED : Rx "CREATE:<payload>" or "VERIFY:<payload>"
+    COMMIT -->|CREATE Mode| SAVE_NVS[Clear previous NVS<br/>Store new SHA-256 master hash<br/>Double success chirp]
+    COMMIT -->|VERIFY Mode: Match| MATCH_NVS[Hash matches stored NVS<br/>Tx SUCCESS:hash<br/>Double success chirp]
+    COMMIT -->|VERIFY Mode: Mismatch| MISMATCH_NVS[Hash mismatch<br/>Tx ERROR:Mismatch | Log NVS<br/>1s Warning Buzzer]
 
-    state EvaluateClick <<choice>>
-    ARMED --> EvaluateClick : Operator Presses Physical Button
+    SAVE_NVS --> RESET[Reset to IDLE]
+    MATCH_NVS --> RESET
+    MISMATCH_NVS --> RESET
+    REJECT --> RESET
+    TIMEOUT --> RESET
 
-    EvaluateClick --> SUCCESS_ACTION : 1 Click detected (> 1000ms window)
-    EvaluateClick --> ABORT_ACTION : 2 Clicks detected (Emergency Abort)
-    
-    ARMED --> TIMEOUT_ACTION : Inactivity Timer > 5000ms (0 clicks)
-
-    state SUCCESS_ACTION {
-        description: Run mbedTLS SHA-256
-        sub_create: If CREATE -> Clear NVS, Store Hash, Reset Counters
-        sub_verify: If VERIFY -> Compare Hash with NVS Master Hash
-    }
-
-    state ABORT_ACTION {
-        description: Tx "ERROR:Rejected - User aborted operation!"\n1000ms Buzzer Alert
-    }
-
-    state TIMEOUT_ACTION {
-        description: Tx "ERROR:Timeout - Physical presence not detected!"\nLog Timeout in NVS | 2000ms Siren
-    }
-
-    SUCCESS_ACTION --> IDLE : Double Chirp & SUCCESS Tx -> Reset
-    ABORT_ACTION --> IDLE : Reset to Standby
-    TIMEOUT_ACTION --> IDLE : Reset to Standby
+    RESET --> IDLE
 ```
 
 ### Physical Operator Gesture Mapping
